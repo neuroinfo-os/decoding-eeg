@@ -11,3 +11,6 @@
  - for filter creation: pyfda
  - optional: statsmodels
 
+# open issues
+ - add biosig toolbox ? 
+ - add data ?
