@@ -6,7 +6,7 @@
  - Wavelet toolbox
 
 ## Python Installation
-´´´bash
+´´´ruby
 git clone https://github.com/neuroinfo-os/decoding-eeg
 cd decoding-eeg/python
 pip install -r requirements.txt
