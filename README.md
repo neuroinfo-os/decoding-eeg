@@ -1,4 +1,4 @@
-# Installation
+# EEG Decoding
 
 
 ## Matlab requirements
