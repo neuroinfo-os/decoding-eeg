@@ -1,15 +1,16 @@
-# decoding-eeg
+# Installation
+
 
 ## Matlab requirements
  - [Biosig toolbox](http://biosig.sourceforge.net)
  - Wavelet toolbox
 
-## Python requirements
- - numpy / scipy
- - sklearn
- - PyWavelets
- - for filter creation: pyfda
- - optional: statsmodels
+## Python Installation
+´´´sh
+git clone https://github.com/neuroinfo-os/decoding-eeg
+cd decoding-eeg/python
+pip install -r requirements.txt
+´´´
 
 # open issues
  - add biosig toolbox ? 
