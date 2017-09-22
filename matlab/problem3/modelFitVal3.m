@@ -4,18 +4,16 @@ function pCorrect = modelFitVal3(X, L, k, modelType)
 % associated labels and returns the cross-validated performance of the
 % specified type of model.
 
-% shuffle the data
+% create a random permutation of sample indices
 nSamples = size(X, 1);
-r = randperm(nSamples);
-X = X(r, :);
-L = L(r);
+randIdx = randperm(nSamples);
 
 pCorrect = 0;
 
 for iPart=1:k
     % separate training and test data
-    idxTest = iPart:k:nSamples;
-    idxTrain = setdiff(1:nSamples, idxTest);
+    idxTest = randIdx(iPart:k:nSamples);
+    idxTrain = randIdx(setdiff(1:nSamples, idxTest));
     xTest = X(idxTest, :);
     xTrain = X(idxTrain, :);
     lTest = L(idxTest);

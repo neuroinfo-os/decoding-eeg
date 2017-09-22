@@ -6,17 +6,17 @@ clear
 close all
 
 % sampling frequency is 512 Hz
-f_s = 512;
+srate = 512;
 
 % load filters
 load('filterHP_0.5_1.5.mat')
 load('filterLP_3_10.mat')
 
 
-%% analyze
+%% analyze ----------------------------------------------------------------
 
 % phase locking pack size
-packSize = 25;
+packSize = 11;
 
 % we want to discriminate blocks 2 and 7
 useBlocks = [2 7];
@@ -35,7 +35,7 @@ for B=1:2
     signalBP = ...
     
     % extract QRS complex positions, using the high-pass filtered signal
-    [H2, HDR, s] = qrsdetect(signalHP, f_s, 1);
+    [H2, HDR, s] = qrsdetect(signalHP, srate, 1);
     peakPos = H2.EVENT.POS;
     
     % compute phases for the high-pass and band-pass filtered signals
@@ -48,8 +48,8 @@ for B=1:2
     % and stack them into matrices. leave out the first and last epoch to
     % avoid indexing errors
     timeWindow = ...
-    phasesHP = zeros(length(timeWindow), length(peakPos)-2);
-    phasesBP = zeros(length(timeWindow), length(peakPos)-2);
+    phasesHP = nan(length(timeWindow), length(peakPos)-2);
+    phasesBP = nan(length(timeWindow), length(peakPos)-2);
     for iEpoch=2:(length(peakPos)-1)
         tmp = unwrap(...);
         phasesHP(:, iEpoch-1) = tmp - ...
@@ -57,57 +57,51 @@ for B=1:2
         phasesBP(:, iEpoch-1) = tmp - ...
     end
     
-    % compute phase locking values over time. for each pack of epochs of
-    % the high-pass filtered signal's unwrapped phase, compute the average
-    % phase angle similarity per time point over epochs, to obtain one PLV
-    % time series per pack
-    nPacks = floor(size(phasesHP, 2)/packSize);
-    plvHP = zeros(length(timeWindow), nPacks);
-    for iPack=1:nPacks
+    % compute phase locking values over epochs. for each epoch of the
+    % high-pass filtered signal's unwrapped phase, compute the PLV across
+    % its symmetric neighborhood of epochs for each time point. ignore
+    % early and late epochs without symmetric neighborhood
+    margin = floor(packSize/2);
+    plvHP = nan(length(timeWindow), size(phasesHP, 2));
+    for iEpoch=margin+1:size(plvHP, 2)-margin
         thisPack = ...
-        plvHP(:, iPack) = ...
+        plvHP(:, iEpoch) = ...
     end
     
-    % store features
-    Features(B).PhaseHP = phasesHP;
-    Features(B).PhaseBP = phasesBP;
-    Features(B).PLVHP = plvHP;
+    % store features (reject epochs with undefined PLV)
+    Features(B).PhaseHP = phasesHP(:, margin+1:end-margin);
+    Features(B).PhaseBP = phasesBP(:, margin+1:end-margin);
+    Features(B).PLVHP = plvHP(:, margin+1:end-margin);
     
 end
 
 
-%% classify
-
-% specify epochs to use. the number of epochs should be a multiple of
-% packSize, to exclude incomplete data
-useEpochs = ...
-nEpochs = length(useEpochs);
+%% classify ---------------------------------------------------------------
 
 % define 2 sample time points around the QRS complex and the T-wave,
 % respectively. note that exactly at the QRS peak phases are set to zero
 t1 = ...
 t2 = ...
 
-% construct the feature matrix for each block. each of the nEpochs rows
-% should contain 6 features: the 3 features stored above, each sampled at
-% the 2 time points. note that PLVs must be copied to fill the rows
-X = [];
-feat = zeros(nEpochs, 6);
+% construct the feature matrix for each block. for simplicity, we will use
+% the same number of epochs for both blocks. each row should contain 6
+% features: the 3 features stored above, each sampled at the 2 time points
+nEpochs = min(size(Features(1).PhaseHP, 2), size(Features(2).PhaseHP, 2));
+X = nan(2*nEpochs, 6);
 for B=1:2
-    feat(:, 1) = ...
-    feat(:, 2) = ...
+    rows = (B-1)*nEpochs + (1:nEpochs);
+    X(rows, 1) = ...
+    X(rows, 2) = ...
     ...
-    
-    X = [X; feat];
 end
 
 % train and validate logit model, linear SVM, and RBF SVM (nothing to
 % change here)
-kCross = 5;
+kCross = 10;
 L = [ones(nEpochs, 1); zeros(nEpochs, 1)];
 modelType = {'logreg', 'linsvm', 'rbfsvm'};
 for iModel=1:3
     pCorrect = modelFitVal2(X, L, kCross, modelType{iModel});
-    fprintf('\nPerformance %6s: %3i percent\n', ...
+    fprintf('\nPerformance %6s: %3i %%\n', ...
         modelType{iModel}, round(100*pCorrect));
 end

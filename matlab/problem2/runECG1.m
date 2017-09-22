@@ -5,11 +5,11 @@
 clear
 close all
 
-%% analyze signal
+%% analyze signal ---------------------------------------------------------
 
 % sampling frequency is 512 Hz
-f_s = 512;
-T = 1/f_s;
+srate = 512;
+T = 1/srate;
 
 % load data, get signal from channel 3
 load('ECG_signal_3')
@@ -25,7 +25,7 @@ signalHP = ...
 signalBP = ...
 
 % extract QRS complex positions, using the high-pass filtered signal
-[H2, HDR, s] = qrsdetect(signalHP, f_s, 1);
+[H2, HDR, s] = qrsdetect(signalHP, srate, 1);
 peakPos = H2.EVENT.POS;
 
 % get power spectra of all 3 filtered signals
@@ -46,15 +46,15 @@ phaseBP = ...
 % mean, and stack them into a matrix. leave out the first and last epoch to
 % avoid indexing errors
 timeWindow = ...
-waves = zeros(length(timeWindow), length(peakPos)-2);
+waves = nan(length(timeWindow), length(peakPos)-2);
 for iEpoch=2:(length(peakPos)-1)
-    ...
-    waves(:, iEpoch-1) = ...
+    wavesTmp = signalHP(...);
+    waves(:, iEpoch-1) = wavesTmp - mean(wavesTmp);
 end
 
-%% plot (edit the last part!)
+%% plot (edit the last part!) ---------------------------------------------
 
-t = (1:length(signal))/f_s;
+t = (1:length(signal))/srate;
 
 % frequency spectra
 figure('units', 'normalized', 'outerposition', [0 0 1 1])
@@ -73,12 +73,12 @@ xlabel('f [Hz]')
 subplot(212)
 hold off
 [a, b] = xcorr(signal, 'unbiased');
-plot(b/f_s, a, 'b')
+plot(b/srate, a, 'b')
 hold on
 [a, b] = xcorr(signalHP, 'unbiased');
-plot(b/f_s, a, 'r')
+plot(b/srate, a, 'r')
 [a, b] = xcorr(signalBP, 'unbiased');
-plot(b/f_s, a, 'g')
+plot(b/srate, a, 'g')
 set(gca, 'xlim', [-2 2])
 title('auto-correlation')
 legend({'original', 'high-pass', 'band-pass'}, 'location', 'northeast')
@@ -177,16 +177,17 @@ for iChan=1:8
     subplot(4, 2, iChan)
     % compute waves as above, reusing peakPos and timeWindow
     signal = ECG_signal(:, iChan);
-    signalHP = ... % your code here
-    waves = zeros(length(timeWindow), length(peakPos)-2);
+    signalHP = ... % your code goes here
+    waves = nan(length(timeWindow), length(peakPos)-2);
     for iEpoch=2:(length(peakPos)-1)
-        ... % and here
-        waves(:, iEpoch-1) = ... % and here
+        wavesTmp = signalHP(...); % and here
+        waves(:, iEpoch-1) = wavesTmp - mean(wavesTmp);
     end
     plot(t(1:length(timeWindow)), waves)
     hold on
     plot(t(1:length(timeWindow)), mean(waves, 2), 'LineWidth', 2, ...
         'color', [0.3 0.3 0.3])
+    set(gca, 'ylim', [-2000 1000])
     title(['QRS ch', num2str(iChan)])
     ylabel('\muV')
     xlabel('time [s]')

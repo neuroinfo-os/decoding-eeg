@@ -6,96 +6,88 @@ clear
 close all
 
 % sampling frequency is 5 kHz
-f_s = 5000;
+srate = 5000;
 
-% load filter. use fdatool to build filter first
+% load filters
+load('filterHP_0.1_10.mat')
 load('filterLP_1000_1200.mat')
 
 
-%% analyze
+%% analyze ----------------------------------------------------------------
 
 % phase locking pack size
-packSize = 20;
+packSize = 11;
 
 % specify blocks to analyze and channel to use
 useBlocks = [1 3];
 useChan = 7;
 
 % initialize feature structure
-Features = struct('Power', [], 'PLV', []);
+Features = struct('Amp', [], 'PLV', []);
 
 for B=1:2
     
     % load and reshape data, get dimensions
     load(['block' num2str(useBlocks(B))])
     signal = squeeze(EEG.data(useChan, :, :));
-    [nPts, nSweeps] = size(signal);
+    [nPts, nEpochs] = size(signal);
     
-    % filter the signal. apply low-pass and 50 Hz notch filter, then
-    % correct for baseline
-    signal = filtfilt(filterLP.Numerator, 1, signal);
-    signal = cleanAC(signal, 50, f_s);
+    % filter the signal and correct for baseline
+    signal = filtfilt(filterHP, 1, signal);
+    signal = filtfilt(filterLP, 1, signal);
+    signal = cleanAC(signal, 50, srate);
     baseline = mean(signal((-49:50)+512, :));
     signal = signal - repmat(baseline, nPts, 1);
     
     % compute wavelet transform
-    sWT = MRA_stationary_fast(signal, 'db4', f_s);
+    sWT = MRA_stationary_fast(signal, 'db4', srate);
     
-    % compute instantaneous phase and power for all sweeps and scales
-    Power = zeros(nPts, nSweeps, 7);
-    Phase = zeros(nPts, nSweeps, 7);
+    % compute instantaneous phase and amplitude for all epochs and scales
+    Amp = nan(nPts, nEpochs, 7);
+    Phase = nan(nPts, nEpochs, 7);
     for iScale=1:7
-        sTmp = sWT.scales(:, :, iScale);
-        Power(:, :, iScale) = abs(hilbert(sTmp));
-        phaseTmp = unwrap(angle(hilbert(sTmp)));
+        thisScale = sWT.scales(:, :, iScale);
+        Amp(:, :, iScale) = abs(hilbert(thisScale));
+        phaseTmp = unwrap(angle(hilbert(thisScale)));
         Phase(:, :, iScale) = phaseTmp - repmat(phaseTmp(512, :), nPts, 1);
     end
-
+    
     % compute phase locking values
-    nPacks = floor(nSweeps/packSize);
-    PLV = zeros(nPts, nPacks, 7);
-    for iPack=1:nPacks
-        thisPack = (iPack-1)*packSize + (1:packSize);
-        PLV(:, iPack, :) = abs(mean(exp(1i*Phase(:, thisPack, :)), 2));
+    margin = floor(packSize/2);
+    PLV = nan(nPts, nEpochs, 7);
+    for iEpoch=margin+1:nEpochs-margin
+        thisPack = iEpoch + (-margin:margin);
+        PLV(:, iEpoch, :) = abs(mean(exp(1i*Phase(:, thisPack, :)), 2));
     end
     
     % store features
-    Features(B).Power = Power;
-    Features(B).PLV = PLV;
-
+    Features(B).Amp = Amp(:, margin+1:end-margin, :);
+    Features(B).PLV = PLV(:, margin+1:end-margin, :);
+    
 end
 
 
-%% classify
-
-% specify sweeps to use
-useSweeps = ...
-    1:packSize*min(size(Features(1).PLV, 2), size(Features(2).PLV, 2));
-nSweeps = length(useSweeps);
+%% classify ---------------------------------------------------------------
 
 % define 5 sample points to capture BAEP wave V of the middle sweep
-t = (5:9)/1000*f_s + 512;
-
-% specify which of the 7 MRA scales to use
-useScales = [1 2 4 5];
-nScales = length(useScales);
+t = (5:9)/1000*srate + 512;
 
 % construct the feature matrix
-X = [];
+nEpochs = min(size(Features(1).Amp, 2), size(Features(2).Amp, 2));
+X = nan(2*nEpochs, 70);
 for B=1:2
-    feat = [];
-    for iScale=1:nScales
-        feat = [feat, Features(B).Power(t, useSweeps, useScales(iScale))'];
-        tmp = Features(B).PLV(t, :, useScales(iScale));
-        tmp = reshape(repmat(tmp, packSize, 1), 5, []);
-        feat = [feat, tmp(:, useSweeps)'];
+    rows = (B-1)*nEpochs + (1:nEpochs);
+    for iScale=1:7
+        cols = (iScale-1)*10 + (1:10);
+        X(rows, cols) = [Features(B).Amp(t, 1:nEpochs, iScale)', ...
+            Features(B).PLV(t, 1:nEpochs, iScale)'];
     end
-    X = [X; feat];
 end
 
 % train and validate the models
-kCross = 5;
-L = [ones(nSweeps, 1); zeros(nSweeps, 1)];
+X = X * pcacov(cov(X)); % project data into principle component space
+kCross = 10;
+L = [ones(nEpochs, 1); zeros(nEpochs, 1)];
 modelType = {'logreg', 'linsvm', 'rbfsvm'};
 for iModel=1:3
     pCorrect = modelFitVal3_solution(X, L, kCross, modelType{iModel});

@@ -4,18 +4,16 @@ function pCorrect = modelFitVal3_solution(X, L, k, modelType)
 % associated labels and returns the cross-validated performance of the
 % specified type of model.
 
-% shuffle the data
+% create a random permutation of sample indices
 nSamples = size(X, 1);
-r = randperm(nSamples);
-X = X(r, :);
-L = L(r);
+randIdx = randperm(nSamples);
 
 pCorrect = 0;
 
 for iPart=1:k
     % separate training and test data
-    idxTest = iPart:k:nSamples;
-    idxTrain = setdiff(1:nSamples, idxTest);
+    idxTest = randIdx(iPart:k:nSamples);
+    idxTrain = randIdx(setdiff(1:nSamples, idxTest));
     xTest = X(idxTest, :);
     xTrain = X(idxTrain, :);
     lTest = L(idxTest);
@@ -26,11 +24,11 @@ for iPart=1:k
         lPredicted = round(glmval(coeff, xTest, 'logit'));
     elseif strcmp(modelType, 'linsvm')
         svmTrained = fitcsvm(xTrain, lTrain, 'KernelFunction', 'linear', ...
-            'Standardize', 1, 'KernelScale', 2, 'BoxConstraint', 10);
+            'Standardize', 1, 'KernelScale', 'auto');
         lPredicted = predict(svmTrained, xTest);
     elseif strcmp(modelType, 'rbfsvm')
         svmTrained = fitcsvm(xTrain, lTrain, 'KernelFunction', 'rbf', ...
-            'Standardize', 1, 'KernelScale', 15, 'BoxConstraint', 100);
+            'Standardize', 1, 'KernelScale', 'auto');
         lPredicted = predict(svmTrained, xTest);
     else
         error('Unknown model type.');

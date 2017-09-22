@@ -5,11 +5,11 @@
 clear
 close all
 
-%% analyze signal
+%% analyze signal ---------------------------------------------------------
 
 % sampling frequency is 512 Hz
-f_s = 512;
-T = 1/f_s;
+srate = 512;
+T = 1/srate;
 
 % load data, get signal from channel 3
 load('ECG_signal_3')
@@ -20,11 +20,11 @@ load('filterHP_0.5_1.5.mat')
 load('filterLP_3_10.mat')
 
 % create high-pass and band-pass filtered signals by combining filters
-signalHP = filtfilt(filterHP.Numerator, 1, signal);
-signalBP = filtfilt(filterLP.Numerator, 1, signalHP);
+signalHP = filtfilt(filterHP, 1, signal);
+signalBP = filtfilt(filterLP, 1, signalHP);
 
 % extract QRS complex positions, using the high-pass filtered signal
-[H2, HDR, s] = qrsdetect(signalHP, f_s, 1);
+[H2, HDR, s] = qrsdetect(signalHP, srate, 1);
 peakPos = H2.EVENT.POS;
 
 % get power spectra
@@ -41,16 +41,16 @@ phaseHP = angle(anaSignalHP);
 phaseBP = angle(anaSignalBP);
 
 % isolate QRS waves
-timeWindow = round(-0.2*f_s)+1:round(0.6*f_s);
-waves = zeros(length(timeWindow), length(peakPos)-2);
+timeWindow = round(-0.2*srate)+1:round(0.6*srate);
+waves = nan(length(timeWindow), length(peakPos)-2);
 for iEpoch=2:(length(peakPos)-1)
-    tmp = signalHP(peakPos(iEpoch)+(timeWindow));
-    waves(:, iEpoch-1) = tmp - mean(tmp);
+    wavesTmp = signalHP(peakPos(iEpoch)+(timeWindow));
+    waves(:, iEpoch-1) = wavesTmp - mean(wavesTmp);
 end
 
-%% plot
+%% plot -------------------------------------------------------------------
 
-t = (1:length(signal))/f_s;
+t = (1:length(signal))/srate;
 
 % frequency spectra
 figure('units', 'normalized', 'outerposition', [0 0 1 1])
@@ -69,12 +69,12 @@ xlabel('f [Hz]')
 subplot(212)
 hold off
 [a, b] = xcorr(signal, 'unbiased');
-plot(b/f_s, a, 'b')
+plot(b/srate, a, 'b')
 hold on
 [a, b] = xcorr(signalHP, 'unbiased');
-plot(b/f_s, a, 'r')
+plot(b/srate, a, 'r')
 [a, b] = xcorr(signalBP, 'unbiased');
-plot(b/f_s, a, 'g')
+plot(b/srate, a, 'g')
 set(gca, 'xlim', [-2 2])
 title('auto-correlation')
 legend({'original', 'high-pass', 'band-pass'}, 'location', 'northeast')
@@ -172,16 +172,17 @@ for iChan=1:8
     figure(f1)
     subplot(4, 2, iChan)
     signal = ECG_signal(:, iChan);
-    signalHP = filtfilt(filterHP.Numerator, 1, signal);
-    waves = zeros(length(timeWindow), length(peakPos)-2);
+    signalHP = filtfilt(filterHP, 1, signal);
+    waves = nan(length(timeWindow), length(peakPos)-2);
     for iEpoch=2:(length(peakPos)-1)
-        tmp = signalHP(peakPos(iEpoch)+(timeWindow));
-        waves(:, iEpoch-1) = tmp - mean(tmp);
+        wavesTmp = signalHP(peakPos(iEpoch)+(timeWindow));
+        waves(:, iEpoch-1) = wavesTmp - mean(wavesTmp);
     end
     plot(t(1:length(timeWindow)), waves)
     hold on
     plot(t(1:length(timeWindow)), mean(waves, 2), 'LineWidth', 2, ...
         'color', [0.3 0.3 0.3])
+    set(gca, 'ylim', [-2000 1000])
     title(['QRS ch', num2str(iChan)])
     ylabel('\muV')
     xlabel('time [s]')

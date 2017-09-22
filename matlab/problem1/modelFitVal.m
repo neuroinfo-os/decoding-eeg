@@ -4,12 +4,9 @@ function pCorrect = modelFitVal(X, L, k)
 % associated labels and returns the cross-validated performance of a linear
 % model.
 
-% shuffle the data. rearrange the rows of X in a random order and rearrange
-% labels in the same order
+% create a random permutation of sample indices
 nSamples = size(X, 1);
-...
-X = ...
-L = ...
+randIdx = ...
 
 % initialize performance measure
 pCorrect = 0;
@@ -26,7 +23,7 @@ for iPart=1:k
     xTrain = X(...);
     lTest = L(...);
     lTrain = L(...);
-    % fit a linear model to training data using logistic regression
+    % fit logit model to training data
     coeff = glmfit(...);
     % compute labels for test data from rounded p(C1|D)
     lPredicted = round(...);

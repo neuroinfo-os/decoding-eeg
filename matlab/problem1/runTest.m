@@ -8,8 +8,8 @@ clear
 
 % set sample size, means, and covariance matrix
 nSamples = 500;
-mu_1 = [1,3];
-mu_2 = [3,0];
+mu1 = [1,3];
+mu2 = [3,0];
 sigma = [2.0 1.5
          1.5 2.0];
 
@@ -24,9 +24,9 @@ L = ...
 % X-values. hint: use functions meshgrid and mvnpdf.
 xVector = linspace(min(X(:)), max(X(:)), 100);
 ...
-p_X1 = ...
-p_X2 = ...
-pDist = reshape(p_X1 + p_X2, 100, 100);
+pX1 = ...
+pX2 = ...
+pDist = reshape(pX1 + pX2, 100, 100);
 
 % fit GLM using logistic regression
 coeff = glmfit(...);
@@ -35,15 +35,15 @@ coeff = glmfit(...);
 x2db = ...
 
 % compute representative class posteriors for the 100*100 X-values
-posterior_C1 = ...
-posterior_C1 = reshape(posterior_C1, 100, 100);
+posteriorC1 = ...
+posteriorC1 = reshape(posteriorC1, 100, 100);
 
 % cross-validate the same model to estimate generalization
 kCross = 10;
 pCorrect = modelFitVal(X, L, kCross);
 
 
-%% plot (nothing to change here)
+%% plot (nothing to change here) ------------------------------------------
 
 % plot data, distributions, and decision boundary
 figure('units','normalized','outerposition',[0.1 0.2 0.35 0.6])
@@ -59,10 +59,10 @@ title('Data and Densities')
 % plot posterior C1
 figure('units','normalized','outerposition',[0.6 0.2 0.35 0.6])
 colormap jet
-pcolor(xVector, xVector, posterior_C1)
+pcolor(xVector, xVector, posteriorC1)
 axis square
 shading flat
 title('Posterior P(C_1|x)')
 
 % print performance
-fprintf('\nPerformance: %3i percent\n\n', round(100*pCorrect));
+fprintf('\nPerformance: %3i %%\n\n', round(100*pCorrect));

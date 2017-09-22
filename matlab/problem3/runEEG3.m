@@ -6,97 +6,89 @@ clear
 close all
 
 % sampling frequency is 5 kHz
-f_s = 5000;
+srate = 5000;
 
-% load filter. use fdatool to build filter first
+% load filters
+load('filterHP_0.1_10.mat')
 load('filterLP_1000_1200.mat')
 
 
-%% analyze
+%% analyze ----------------------------------------------------------------
 
 % phase locking pack size
-packSize = 20;
+packSize = 11;
 
 % specify blocks to analyze and channel to use
 useBlocks = [1 3];
 useChan = ...
 
 % initialize feature structure
-Features = struct('Power', [], 'PLV', []);
+Features = struct('Amp', [], 'PLV', []);
 
 for B=1:2
     
     % load and reshape data, get dimensions
     load(['block' num2str(useBlocks(B))])
     signal = squeeze(EEG.data(useChan, :, :));
-    [nPts, nSweeps] = size(signal);
+    [nPts, nEpochs] = size(signal);
     
-    % filter the signal. apply your low-pass filter and a 50 Hz notch
-    % filter (using function cleanAC), then correct for baseline (subtract
-    % from each epoch its mean signal over 100 pt around the 2nd sweep
-    % onset)
-    ...
-    signal = ...
+    % filter the signal. apply high-pass and low-pass filters and a 50 Hz
+    % notch filter, then correct for baseline (subtract from each epoch its
+    % mean signal over 100 pt around the 2nd sweep onset)
+    signal = filtfilt(filterHP, 1, signal);
+    signal = filtfilt(filterLP, 1, signal);
+    signal = cleanAC(signal, 50, srate);
+    baseline = ...
+    signal = signal - ...
     
     % compute wavelet transform
-    sWT = MRA_stationary_fast(signal, 'db4', f_s);
+    sWT = MRA_stationary_fast(signal, 'db4', srate);
     
-    % compute instantaneous phase and power for all sweeps and scales (no
-    % need to leave out the first and last trials here, since the data are
-    % already epoched). correct phases for the middle sweep's baseline
-    Power = zeros(nPts, nSweeps, 7);
-    Phase = zeros(nPts, nSweeps, 7);
+    % compute instantaneous phase and amplitude for all epochs and scales
+    % (no need to leave out the first and last trials here, since the data
+    % are already epoched). subtract from each phase epoch the value right
+    % before the 2nd sweep's onset
+    Amp = nan(nPts, nEpochs, 7);
+    Phase = nan(nPts, nEpochs, 7);
     for iScale=1:7
-        ...
-        Power(:, :, iScale) = ...
-        ...
-        Phase(:, :, iScale) = ...
+        thisScale = sWT.scales(:, :, iScale);
+        Amp(:, :, iScale) = ...
+        phaseTmp = unwrap(...);
+        Phase(:, :, iScale) = phaseTmp - ...
     end
 
     % compute phase locking values
-    nPacks = floor(nSweeps/packSize);
-    PLV = zeros(nPts, nPacks, 7);
-    for iPack=1:nPacks
+    margin = floor(packSize/2);
+    PLV = nan(nPts, nEpochs, 7);
+    for iEpoch=margin+1:nEpochs-margin
         thisPack = ...
-        PLV(:, iPack, :) = ...
+        PLV(:, iEpoch, :) = ...
     end
     
     % store features
-    Features(B).Power = Power;
-    Features(B).PLV = PLV;
+    Features(B).Amp = Amp(:, margin+1:end-margin, :);
+    Features(B).PLV = PLV(:, margin+1:end-margin, :);
 
 end
 
 
-%% classify
-
-% specify sweeps to use
-useSweeps = ...
-nSweeps = length(useSweeps);
+%% classify ---------------------------------------------------------------
 
 % define 5 sample points to capture BAEP wave V of the middle sweep
 t = ...
 
-% specify which of the 7 MRA scales to use as features
-useScales = ...
-nScales = length(useScales);
-
-% construct the feature matrix, using power and PLV for each time point and
-% scale. each row should contain 2*5*nScales entries. for simplicity, the
-% suggested code fills the rows by appending rather than explicit indexing
-X = [];
+% construct the feature matrix, using amplitude and PLV for each time point
+% and scale. we will use the same number of epochs for both blocks. each
+% row should contain 2 * 5 * 7 = 70 entries
+nEpochs = min(size(Features(1).Amp, 2), size(Features(2).Amp, 2));
+X = nan(2*nEpochs, 70);
 for B=1:2
-    feat = [];
-    for iScale=1:nScales
-        feat = [feat, ...];
-        ...
-    end
-    X = [X; feat];
+    ...
 end
 
 % train and validate the models (nothing to change here)
-kCross = 5;
-L = [ones(nSweeps, 1); zeros(nSweeps, 1)];
+kCross = 10;
+L = [ones(nEpochs, 1); zeros(nEpochs, 1)];
 modelType = {'logreg', 'linsvm', 'rbfsvm'};
 for iModel=1:3
     pCorrect = modelFitVal3(X, L, kCross, modelType{iModel});

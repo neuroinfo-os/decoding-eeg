@@ -4,23 +4,21 @@ function pCorrect = modelFitVal_solution(X, L, k)
 % associated labels and returns the cross-validated performance of a linear
 % model.
 
-% shuffle the data
+% create a random permutation of sample indices
 nSamples = size(X, 1);
-r = randperm(nSamples);
-X = X(r, :);
-L = L(r);
+randIdx = randperm(nSamples);
 
 pCorrect = 0;
 
 for iPart=1:k
     % separate training and test data
-    idxTest = iPart:k:nSamples;
-    idxTrain = setdiff(1:nSamples, idxTest);
+    idxTest = randIdx(iPart:k:nSamples);
+    idxTrain = randIdx(setdiff(1:nSamples, idxTest));
     xTest = X(idxTest, :);
     xTrain = X(idxTrain, :);
     lTest = L(idxTest);
     lTrain = L(idxTrain);
-    % fit model to training data using logistic regression
+    % fit logit model to training data
     coeff = glmfit(xTrain, lTrain, 'binomial', 'link', 'logit');
     % compute labels for test data from rounded p(C1|D)
     lPredicted = round(glmval(coeff, xTest, 'logit'));
