@@ -1,6 +1,6 @@
 from pylab import *
 from numpy.random import shuffle
-import statsmodels.api as sm
+from sklearn.linear_model import LogisticRegression
 
 
 def modelFitVal(X, L, kPart):
@@ -26,19 +26,15 @@ def modelFitVal(X, L, kPart):
         lTest = L[index]
         xTrain = X[~index]
         lTrain = L[~index]
-
-        # add columns of ones
-        xTest = sm.add_constant(xTest)
-        xTrain = sm.add_constant(xTrain)
-
-        # fit model to training data using logistic regression
-        model = sm.GLM(lTrain, xTrain, family=sm.families.Binomial())
-        model = model.fit()
+        
+        # fit model to training data using logistic regressio
+        model = LogisticRegression()
+        model.fit(xTrain, lTrain)
 
         # compute p(C1|D) for test data
         posterior_C1 = model.predict(xTest)
 
         # compare model's classification to actual labels
-        pCorrect += mean(posterior_C1.round() == lTest) / kPart
+        pCorrect += mean(posterior_C1 == lTest) / kPart
 
     return pCorrect
