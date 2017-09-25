@@ -26,7 +26,7 @@ pX1 = mvnpdf([x1mesh(:) x2mesh(:)], mu1, sigma);
 pX2 = mvnpdf([x1mesh(:) x2mesh(:)], mu2, sigma);
 pDist = reshape(pX1 + pX2, 100, 100);
 
-% fit GLM using logistic regression
+% perform logistic regression
 coeff = glmfit(X, L, 'binomial', 'link', 'logit');
 
 % determine the decision boundary of the fitted model

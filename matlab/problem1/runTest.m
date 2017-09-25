@@ -28,7 +28,7 @@ pX1 = ...
 pX2 = ...
 pDist = reshape(pX1 + pX2, 100, 100);
 
-% fit GLM using logistic regression
+% perform logistic regression
 coeff = glmfit(...);
 
 % determine the decision boundary of the fitted model

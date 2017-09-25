@@ -60,7 +60,7 @@ pDist = reshape(pX1 + pX2, 100, 100);
 
 You might want to use the \texttt{meshgrid} function and reshape the resulting matrices to vectors. If you have trouble with the suggested one-liners, use for-loops instead. The result \texttt{pDist} should be a 100$\times$100 matrix containing the sum of both PDFs.
 
-Now we train a generalized linear model on the sample data. Look into the MATLAB documentation for \texttt{glmfit} to find the right arguments for the distribution and link function.
+Now we train a generalized linear model on the sample data to perform logistic regression. Look into the MATLAB documentation for \texttt{glmfit} to find the right arguments for the distribution and link function.
 
 \begin{minted}[xleftmargin=1cm]{matlab}
 coeff = glmfit(...);
